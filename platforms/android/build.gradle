@@ -153,7 +153,7 @@ android {
     sourceSets {
         main {
             manifest.srcFile 'AndroidManifest.xml'
-            java.srcDirs = ['src', 'src/main/java', '../../app_update/src/android']
+            java.srcDirs = ['src', 'src/main/java', '../../app_update/src/android', '../../baidu_navi/src/android']
             resources.srcDirs = ['src']
             aidl.srcDirs = ['src']
             renderscript.srcDirs = ['src']
