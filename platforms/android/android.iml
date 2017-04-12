@@ -92,6 +92,10 @@
     </content>
     <orderEntry type="jdk" jdkName="Android API 25 Platform" jdkType="Android SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
+    <orderEntry type="library" exported="" name="httpmime-4.1.2" level="project" />
+    <orderEntry type="library" exported="" name="lbsCoreSDK" level="project" />
+    <orderEntry type="library" exported="" name="galaxy_lite_lbs_v2.0" level="project" />
+    <orderEntry type="library" exported="" name="BaiduNaviSDK_3.3.0" level="project" />
     <orderEntry type="module" module-name="CordovaLib" exported="" />
   </component>
 </module>
