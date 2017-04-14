@@ -47,6 +47,10 @@ public class CheckUpdateThread implements Runnable {
     public void run() {
         int versionCodeLocal = getVersionCodeLocal(mContext); // 获取当前软件版本
         int versionCodeRemote = getVersionCodeRemote();  //获取服务器当前软件版本
+        if(this.mHashMap==null){
+            mHandler.sendEmptyMessage(Constants.NETWORK_ERROR);
+            return;
+        }
 
         queue.clear(); //ensure the queue is empty
         Version version=new Version(versionCodeLocal, versionCodeRemote);
@@ -129,6 +133,10 @@ public class CheckUpdateThread implements Runnable {
         int versionCodeRemote = 0;
 
         InputStream is = returnFileIS(updateXmlUrl);
+        if(is==null){
+            mHandler.sendEmptyMessage(Constants.NETWORK_ERROR);
+            return versionCodeRemote;
+        }
         // 解析XML文件。 由于XML文件比较小，因此使用DOM方式进行解析
         ParseXmlService service = new ParseXmlService();
         try {

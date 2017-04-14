@@ -4,6 +4,7 @@ import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.location.LocationListener;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
@@ -15,6 +16,10 @@ import android.widget.Button;
 import android.widget.Toast;
 
 //import com.baidu.navi.sdkdemo.R;
+import com.baidu.location.BDLocation;
+import com.baidu.location.BDLocationListener;
+import com.baidu.location.LocationClient;
+import com.baidu.location.LocationClientOption;
 import com.baidu.navisdk.adapter.BNCommonSettingParam;
 import com.baidu.navisdk.adapter.BNOuterLogUtil;
 import com.baidu.navisdk.adapter.BNOuterTTSPlayerCallback;
@@ -24,7 +29,8 @@ import com.baidu.navisdk.adapter.BNaviSettingManager;
 import com.baidu.navisdk.adapter.BaiduNaviManager;
 import com.baidu.navisdk.adapter.BaiduNaviManager.NaviInitListener;
 import com.baidu.navisdk.adapter.BaiduNaviManager.RoutePlanListener;
-import com.mawujun.R;
+import com.mawujun.ems.R;
+
 
 import java.io.File;
 import java.util.ArrayList;
@@ -32,15 +38,15 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class BNDemoMainActivity extends Activity {
-
+	public static final String TAG = "BNDemoMainActivity";
 	public static List<Activity> activityList = new LinkedList<Activity>();
 
 	private static final String APP_FOLDER_NAME = "BNSDKSimpleDemo";
 
-	private Button mWgsNaviBtn = null;
-	private Button mGcjNaviBtn = null;
-	private Button mBdmcNaviBtn = null;
-	private Button mDb06ll = null;
+//	private Button mWgsNaviBtn = null;
+//	private Button mGcjNaviBtn = null;
+//	private Button mBdmcNaviBtn = null;
+	private Button mDb06llBtn = null;
 	private String mSDCardPath = null;
 
 	public static final String ROUTE_PLAN_NODE = "routePlanNode";
@@ -56,27 +62,87 @@ public class BNDemoMainActivity extends Activity {
 
 	private boolean hasInitSuccess = false;
 	private boolean hasRequestComAuth = false;
-	
+
+
+	public LocationClient mLocationClient = null;
+	public BDLocationListener myListener = new BDLocationListener() {
+		@Override
+		public void onReceiveLocation(BDLocation bdLocation) {
+			Log.i(TAG, "onLocationChanged. loc: " + bdLocation);
+			if (bdLocation != null) {
+				Log.i(TAG, " location is not null" + bdLocation.getLatitude() + " , longtitude: "+bdLocation.getLongitude());
+				//Location location=locationManager.getLastKnownLocation(provider);
+				//navigateTo(location);
+			} else {
+				Toast.makeText( getApplicationContext(), "不能获取当前的位置.", Toast.LENGTH_SHORT).show();
+			}
+		}
+
+		@Override
+		public void onConnectHotSpotMessage(String s, int i) {
+
+		}
+	};
+
+	public void initLocation(CoordinateType coordinateType) {
+		//配置参数是可以每次定位的时候都不同的
+		LocationClientOption option = new LocationClientOption();
+		//高精度定位模式：这种定位模式下，会同时使用网络定位和GPS定位，优先返回最高精度的定位结果；
+		//低功耗定位模式：这种定位模式下，不会使用GPS，只会使用网络定位（Wi-Fi和基站定位）；
+		//仅用设备定位模式：这种定位模式下，不需要连接网络，只使用GPS进行定位，这种模式下不支持室内环境的定位。
+		option.setLocationMode(LocationClientOption.LocationMode.Hight_Accuracy);////可选，默认高精度，设置定位模式，高精度，低功耗，仅设备
+		option.setScanSpan(1200);//可选，设置发起定位请求的间隔需要大于等于1000ms才是有效的
+		//option.setScanSpan(0);
+		option.setIsNeedAddress(false);//可选，设置是否需要地址信息，默认不需要
+		option.setLocationNotify(false);//可选，默认false，设置是否当gps有效时按照1S1次频率输出GPS结果
+		option.setIsNeedLocationDescribe(false);//可选，默认false，设置是否需要位置语义化结果，可以在BDLocation.getLocationDescribe里得到，结果类似于“在北京天安门附近”
+		option.setIsNeedLocationPoiList(false);//可选，默认false，设置是否需要POI结果，可以在BDLocation.getPoiList里得到
+		option.setIgnoreKillProcess(false);//可选，默认false，定位SDK内部是一个SERVICE，并放到了独立进程，设置是否在stop的时候杀死这个进程，默认杀死
+		option.SetIgnoreCacheException(false);//可选，默认false，设置是否收集CRASH信息，默认收集
+		option.setEnableSimulateGps(false);//可选，默认false，设置是否需要过滤gps仿真结果，默认需要
+		option.setOpenGps(true);//可选，默认false,设置是否使用gps
+		//option.disableCache(true);
+
+		option.setCoorType(coordinateType.toString());// 返回的定位结果是百度经纬度，默认值gcj02,//wgs84:国际经纬度坐标  "gcj02":国家测绘局标准,"bd09ll":百度经纬度标准,"bd09":百度墨卡托标准
+		option.setProdName("BaiduLoc");
+		mLocationClient.setLocOption(option);
+
+		//MyLog.i(BaiduMapAll.LOG_TAG, this.getGps_interval()+"");
+	}
+
+	//目标经纬度
+	Double target_longitude=null;
+	Double target_latitude=null;
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		// TODO Auto-generated method stub
 		super.onCreate(savedInstanceState);
-
 		activityList.add(this);
+		setContentView(R.layout.activity_bndemomain);
 
-		setContentView(R.layout.activity_main);
+		mLocationClient = new LocationClient(getApplicationContext());
+		//声明LocationClient类
+		mLocationClient.registerLocationListener( myListener );
+		//注册监听函数,暂时固定为百度经纬度
+		initLocation(CoordinateType.BD09LL);
+		mLocationClient.start();
 
-		mWgsNaviBtn = (Button) findViewById(R.id.wgsNaviBtn);
-		mGcjNaviBtn = (Button) findViewById(R.id.gcjNaviBtn);
-		mBdmcNaviBtn = (Button) findViewById(R.id.bdmcNaviBtn);
-		mDb06ll = (Button) findViewById(R.id.mDb06llNaviBtn);
+		Intent intent=getIntent();
+		target_longitude=Double.parseDouble(intent.getStringExtra("longitude"));
+		target_latitude=Double.parseDouble(intent.getStringExtra("latitude"));
+
+
+//		mWgsNaviBtn = (Button) findViewById(R.id.wgsNaviBtn);
+//		mGcjNaviBtn = (Button) findViewById(R.id.gcjNaviBtn);
+//		mBdmcNaviBtn = (Button) findViewById(R.id.bdmcNaviBtn);
+		mDb06llBtn = (Button) findViewById(R.id.mDb06llNaviBtn);
+		mDb06llBtn.setClickable(false);
 		BNOuterLogUtil.setLogSwitcher(true);
 
 		initListener();
 		if (initDirs()) {
 			initNavi();
 		}
-
 		// BNOuterLogUtil.setLogSwitcher(true);
 	}
 
@@ -87,49 +153,52 @@ public class BNDemoMainActivity extends Activity {
 
 	private void initListener() {
 
-		if (mWgsNaviBtn != null) {
-			mWgsNaviBtn.setOnClickListener(new OnClickListener() {
+//		if (mWgsNaviBtn != null) {
+//			mWgsNaviBtn.setOnClickListener(new OnClickListener() {
+//
+//				@Override
+//				public void onClick(View arg0) {
+//					if (BaiduNaviManager.isNaviInited()) {
+//						routeplanToNavi(CoordinateType.WGS84);
+//					}
+//				}
+//
+//			});
+//		}
+//		if (mGcjNaviBtn != null) {
+//			mGcjNaviBtn.setOnClickListener(new OnClickListener() {
+//
+//				@Override
+//				public void onClick(View arg0) {
+//					if (BaiduNaviManager.isNaviInited()) {
+//						routeplanToNavi(CoordinateType.GCJ02);
+//					}
+//				}
+//
+//			});
+//		}
+//		if (mBdmcNaviBtn != null) {
+//			mBdmcNaviBtn.setOnClickListener(new OnClickListener() {
+//
+//				@Override
+//				public void onClick(View arg0) {
+//
+//					if (BaiduNaviManager.isNaviInited()) {
+//						routeplanToNavi(CoordinateType.BD09_MC);
+//					}
+//				}
+//			});
+//		}
 
-				@Override
-				public void onClick(View arg0) {
-					if (BaiduNaviManager.isNaviInited()) {
-						routeplanToNavi(CoordinateType.WGS84);
-					}
-				}
-
-			});
-		}
-		if (mGcjNaviBtn != null) {
-			mGcjNaviBtn.setOnClickListener(new OnClickListener() {
-
-				@Override
-				public void onClick(View arg0) {
-					if (BaiduNaviManager.isNaviInited()) {
-						routeplanToNavi(CoordinateType.GCJ02);
-					}
-				}
-
-			});
-		}
-		if (mBdmcNaviBtn != null) {
-			mBdmcNaviBtn.setOnClickListener(new OnClickListener() {
-
-				@Override
-				public void onClick(View arg0) {
-
-					if (BaiduNaviManager.isNaviInited()) {
-						routeplanToNavi(CoordinateType.BD09_MC);
-					}
-				}
-			});
-		}
-
-		if (mDb06ll != null) {
-			mDb06ll.setOnClickListener(new OnClickListener() {
+		if (mDb06llBtn != null) {
+			mDb06llBtn.setOnClickListener(new OnClickListener() {
 				@Override
 				public void onClick(View arg0) {
 					if (BaiduNaviManager.isNaviInited()) {
 						routeplanToNavi(CoordinateType.BD09LL);
+						Toast.makeText(BNDemoMainActivity.this, "正在获取当前地址，请稍候!", Toast.LENGTH_SHORT).show();
+					} else {
+						Toast.makeText(BNDemoMainActivity.this, "导航正在初始化，请稍候!", Toast.LENGTH_SHORT).show();
 					}
 				}
 			});
@@ -227,6 +296,7 @@ public class BNDemoMainActivity extends Activity {
 		return true;
 	}
 
+	//private boolean auth_success=false;
 	private void initNavi() {
 
 		BNOuterTTSPlayerCallback ttsCallback = null;
@@ -247,6 +317,11 @@ public class BNDemoMainActivity extends Activity {
 			public void onAuthResult(int status, String msg) {
 				if (0 == status) {
 					authinfo = "key校验成功!";
+//					auth_success=true;
+//					if(hasInitSuccess){
+//						mDb06llBtn.setClickable(true);
+//						mDb06llBtn.setText("出        发");
+//					}
 				} else {
 					authinfo = "key校验失败, " + msg;
 				}
@@ -263,6 +338,10 @@ public class BNDemoMainActivity extends Activity {
 				Toast.makeText(BNDemoMainActivity.this, "百度导航引擎初始化成功", Toast.LENGTH_SHORT).show();
 				hasInitSuccess = true;
 				initSetting();
+				//if(auth_success){
+					mDb06llBtn.setClickable(true);
+					mDb06llBtn.setText("出        发");
+				//}
 			}
 
 			public void initStart() {
@@ -288,6 +367,8 @@ public class BNDemoMainActivity extends Activity {
 
 	private void routeplanToNavi(CoordinateType coType) {
 		mCoordinateType = coType;
+
+
 		if (!hasInitSuccess) {
 			Toast.makeText(BNDemoMainActivity.this, "还未初始化!", Toast.LENGTH_SHORT).show();
 		}
@@ -305,27 +386,48 @@ public class BNDemoMainActivity extends Activity {
 			}
 
 		}
+
+
+
+//		Intent intent=getIntent();
+//		Double longitude=Double.parseDouble(intent.getStringExtra("longitude"));
+//		Double latitude=Double.parseDouble(intent.getStringExtra("latitude"));
+
 		BNRoutePlanNode sNode = null;
 		BNRoutePlanNode eNode = null;
 		switch (coType) {
-			case GCJ02: {
-				sNode = new BNRoutePlanNode(116.30142, 40.05087, "百度大厦", null, coType);
-				eNode = new BNRoutePlanNode(116.39750, 39.90882, "北京天安门", null, coType);
-				break;
-			}
-			case WGS84: {
-				sNode = new BNRoutePlanNode(116.300821, 40.050969, "百度大厦", null, coType);
-				eNode = new BNRoutePlanNode(116.397491, 39.908749, "北京天安门", null, coType);
-				break;
-			}
-			case BD09_MC: {
-				sNode = new BNRoutePlanNode(12947471, 4846474, "百度大厦", null, coType);
-				eNode = new BNRoutePlanNode(12958160, 4825947, "北京天安门", null, coType);
-				break;
-			}
+//			case GCJ02: {
+//				sNode = new BNRoutePlanNode(116.30142, 40.05087, "百度大厦", null, coType);
+//				eNode = new BNRoutePlanNode(116.39750, 39.90882, "北京天安门", null, coType);
+//				break;
+//			}
+//			case WGS84: {
+//				sNode = new BNRoutePlanNode(116.300821, 40.050969, "百度大厦", null, coType);
+//				eNode = new BNRoutePlanNode(116.397491, 39.908749, "北京天安门", null, coType);
+//				break;
+//			}
+//			case BD09_MC: {
+//				sNode = new BNRoutePlanNode(12947471, 4846474, "百度大厦", null, coType);
+//				eNode = new BNRoutePlanNode(12958160, 4825947, "北京天安门", null, coType);
+//				break;
+//			}
 			case BD09LL: {
-				sNode = new BNRoutePlanNode(116.30784537597782, 40.057009624099436, "百度大厦", null, coType);
-				eNode = new BNRoutePlanNode(116.40386525193937, 39.915160800132085, "北京天安门", null, coType);
+				BDLocation bDLocation=mLocationClient.getLastKnownLocation();
+				int i=0;
+				while(bDLocation==null && i<30){
+					Log.w(TAG,i+"获取不到重新获取定位经纬度!");
+					bDLocation=mLocationClient.getLastKnownLocation();
+					i++;
+				}
+				if(bDLocation==null){
+
+				}
+				//停止获取了
+				mLocationClient.stop();
+				//http://blog.csdn.net/eastmount/article/details/42534721
+				Log.i(TAG, "定位坐标为："+bDLocation.getLongitude()+"----"+bDLocation.getLatitude());
+				sNode = new BNRoutePlanNode(bDLocation.getLongitude(), bDLocation.getLatitude(), "开始位置", null, coType);
+				eNode = new BNRoutePlanNode(target_longitude, target_latitude, "目标位置", null, coType);
 				break;
 			}
 			default:
