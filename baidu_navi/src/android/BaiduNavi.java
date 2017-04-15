@@ -3,11 +3,12 @@ package com.mawujun.navi;
 
 import android.content.Intent;
 import android.util.Log;
+import android.widget.Toast;
 
+import com.baidu.location.BDLocation;
 import com.baidu.location.BDLocationListener;
 import com.baidu.location.LocationClient;
 import com.baidu.location.LocationClientOption;
-import com.baidu.navisdk.adapter.BNRoutePlanNode;
 import com.baidu.navisdk.adapter.BNRoutePlanNode.CoordinateType;
 
 import org.apache.cordova.CallbackContext;
@@ -48,11 +49,11 @@ public class BaiduNavi extends CordovaPlugin {
                         // TODO Auto-generated catch block
                         e.printStackTrace();
                         Log.e(LOG_TAG, e.getMessage());
-                        paramsException(callbackContext);
+                        navi_paramsException(callbackContext);
                         return;
                     }
                     if (longitude==null || latitude==null) {
-                        paramsException(callbackContext);
+                        navi_paramsException(callbackContext);
                     }
 
                     Intent intent = new Intent().setClass(cordova.getActivity(), BNDemoMainActivity.class);
@@ -70,11 +71,32 @@ public class BaiduNavi extends CordovaPlugin {
                 }
             });
             return true;
+        } else if("loc".equals(action)){//如果是发送定位数据到后台
+            mLocationClient = new LocationClient(cordova.getActivity().getApplicationContext());
+            //声明LocationClient类
+           // BDLocationListener myListener = new LocLocationListener();
+            mLocationClient.registerLocationListener( new BDLocationListener(){
+                @Override
+                public void onReceiveLocation(BDLocation bdLocation) {
+                    //Log.i("hehr", "onLocationChanged. loc: " + bdLocation);
+                    if (bdLocation != null) {
+                        Log.i("1233", " location is not null" + bdLocation.getLatitude() + " , longtitude: "+bdLocation.getLongitude());
+                    } else {
+                        Toast.makeText( cordova.getActivity().getApplicationContext(), "不能获取当前的位置.", Toast.LENGTH_SHORT).show();
+                    }
+                }
+
+                @Override
+                public void onConnectHotSpotMessage(String s, int i) {
+
+                }
+            } );
+            mLocationClient.start();
         }
         return false;
     }
 
-    private void paramsException(CallbackContext callbackContext){
+    private void navi_paramsException(CallbackContext callbackContext){
 
         JSONObject json = new JSONObject();
         try {
@@ -86,7 +108,7 @@ public class BaiduNavi extends CordovaPlugin {
     }
 
     public LocationClient mLocationClient = null;
-    public BDLocationListener myListener = new MyLocationListener();
+
 //    @Override
 //    public void onStart() {
 //        super.onStart();
@@ -103,7 +125,7 @@ public class BaiduNavi extends CordovaPlugin {
         //低功耗定位模式：这种定位模式下，不会使用GPS，只会使用网络定位（Wi-Fi和基站定位）；
         //仅用设备定位模式：这种定位模式下，不需要连接网络，只使用GPS进行定位，这种模式下不支持室内环境的定位。
         option.setLocationMode(LocationMode.Hight_Accuracy);////可选，默认高精度，设置定位模式，高精度，低功耗，仅设备
-        option.setScanSpan(2000);//可选，默认0，即仅定位一次，设置发起定位请求的间隔需要大于等于1000ms才是有效的
+        option.setScanSpan(1000);//可选，默认0，即仅定位一次，设置发起定位请求的间隔需要大于等于1000ms才是有效的
         //option.setScanSpan(0);
         option.setIsNeedAddress(false);//可选，设置是否需要地址信息，默认不需要
         option.setLocationNotify(false);//可选，默认false，设置是否当gps有效时按照1S1次频率输出GPS结果

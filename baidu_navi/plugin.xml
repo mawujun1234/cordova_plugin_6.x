@@ -70,9 +70,11 @@
         </config-file>
 		
 		
-		<source-file src="src/android/com/mawujun/navi/BaiduNavi.java" target-dir="src/com/mawujun/navi" />
-		<source-file src="src/android/com/mawujun/navi/BNDemoGuideActivity.java" target-dir="src/com/mawujun/navi" />
-		<source-file src="src/android/com/mawujun/navi/BNDemoMainActivity.java" target-dir="src/com/mawujun/navi" />
+		<source-file src="src/android/BaiduNavi.java" target-dir="src/com/mawujun/navi" />
+		<source-file src="src/android/BNDemoGuideActivity.java" target-dir="src/com/mawujun/navi" />                                                                                         
+		<source-file src="src/android/BNDemoMainActivity.java" target-dir="src/com/mawujun/navi" />
+		<source-file src="src/android/LocLocationListener.java" target-dir="src/com/mawujun/navi" />
+
 		<source-file src="libs/armeabi/" target-dir="libs"/>  
 		
 		<source-file src="libs/BaiduLBS_Android.jar" target-dir="libs"/> 
