@@ -19,6 +19,8 @@ import org.apache.cordova.LOG;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import static com.baidu.location.LocationClient.getBDLocationInCoorType;
+
 /**
  * 为了能在后台定时的发送gps数据到服务器
  *
@@ -38,20 +40,19 @@ public class LocService extends Service {
 
         @Override
         public void onReceiveLocation(BDLocation location) {
-            Log.w("11111","1111"+location);
             if(location!=null){
 
-                //广播到导航的界面去
+                //广播到导航的界面去，
                 intent.putExtra("longitude", location.getLongitude());
                 intent.putExtra("latitude", location.getLatitude());
                 sendBroadcast(intent);
 
-                //获取gps的经纬度
-                BDLocation gps_location=bd09llTOgcj02(location.getLongitude(),location.getLatitude());
+                //把gps经纬度转换成百度经纬度，因为web上用到的坐标多是百度坐标
+                BDLocation bad06ll_location=wgs84_gcj02_bad06ll(location.getLongitude(),location.getLatitude());
+
+                //把经纬度数据上传到服务器中去
 
             }
-
-
         }
 
         @Override
@@ -59,11 +60,23 @@ public class LocService extends Service {
 
         }
     }
-    private BDLocation bd09llTOgcj02(Double db09ll_longitude,Double db09ll_latitude){
-        BDLocation bd=new BDLocation();
-        bd.setLatitude(db09ll_latitude);
-        bd.setLongitude(db09ll_longitude);
-        return LocationClient.getBDLocationInCoorType(bd, BDLocation.BDLOCATION_BD09LL_TO_GCJ02);
+
+    /**
+     * GPS全球卫星定位系统使用的坐标系
+     * 把标准的gps坐标转换成百度的坐标
+     * @param wgs84_longitude
+     * @param wgs84_latitude
+     * @return
+     */
+    private BDLocation wgs84_gcj02_bad06ll(Double wgs84_longitude,Double wgs84_latitude){
+        BDLocation wgs84=new BDLocation();
+        wgs84.setLatitude(wgs84_longitude);
+        wgs84.setLongitude(wgs84_latitude);
+        BDLocation gcj02=LocationClient.getBDLocationInCoorType(wgs84, BDLocation.BDLOCATION_WGS84_TO_GCJ02);
+        Log.w("11111国标",gcj02.getLongitude()+"===="+gcj02.getLatitude());
+        BDLocation bad06ll=LocationClient.getBDLocationInCoorType(gcj02,BDLocation.BDLOCATION_GCJ02_TO_BD09LL);
+        Log.w("11111百度",bad06ll.getLongitude()+"===="+bad06ll.getLatitude());
+        return bad06ll;
     }
     public void initLocation(BNRoutePlanNode.CoordinateType coordinateType) {
         //配置参数是可以每次定位的时候都不同的
@@ -98,6 +111,9 @@ public class LocService extends Service {
     public void onCreate() {
         Log.i(BNDemoMainActivity.TAG, "初始化LocationApplication!");
         super.onCreate();
+
+
+
         //onCreate(getBaseContext());
         mLocationClient = new LocationClient(this.getBaseContext());
         mMyLocationListener = new MyLocationListener();
@@ -107,12 +123,14 @@ public class LocService extends Service {
         SDKInitializer.initialize(this.getBaseContext().getApplicationContext());
         //handler = new Handler(Looper.getMainLooper());
     }
-
+    private BNRoutePlanNode.CoordinateType mCoordinateType = null;
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.i(BNDemoMainActivity.TAG, "启动LocationApplication!");
 
-        initLocation(BNRoutePlanNode.CoordinateType.BD09LL);
+        mCoordinateType= BNRoutePlanNode.CoordinateType.valueOf(intent.getStringExtra("coordinateType"));
+        //Log.w("22222",mCoordinateType.toString());
+        initLocation(mCoordinateType);//BNRoutePlanNode.CoordinateType.WGS84
 
         mLocationClient.start();
         mLocationClient.requestLocation();

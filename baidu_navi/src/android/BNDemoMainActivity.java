@@ -61,7 +61,7 @@ public class BNDemoMainActivity extends Activity {
 	private boolean hasInitSuccess = false;
 	private boolean hasRequestComAuth = false;
 
-	private CoordinateType mCoordinateType = CoordinateType.BD09LL;
+	private CoordinateType mCoordinateType = null;
 
 	private LocReceiver msgReceiver;
 
@@ -85,6 +85,7 @@ public class BNDemoMainActivity extends Activity {
 		Intent intent=getIntent();
 		target_longitude=Double.parseDouble(intent.getStringExtra("longitude"));
 		target_latitude=Double.parseDouble(intent.getStringExtra("latitude"));
+		mCoordinateType=CoordinateType.valueOf(intent.getStringExtra("coordinateType"));
 
 
 //		mWgsNaviBtn = (Button) findViewById(R.id.wgsNaviBtn);
@@ -351,21 +352,25 @@ public class BNDemoMainActivity extends Activity {
 
 		BNRoutePlanNode sNode = null;
 		BNRoutePlanNode eNode = null;
-		switch (coType) {
-			case BD09LL: {
-//				BDLocation bDLocation=mLocationClient.getLastKnownLocation();
-//				mLocationClient.stop();
+//		switch (coType) {
+//			case BD09LL: {
+////				BDLocation bDLocation=mLocationClient.getLastKnownLocation();
+////				mLocationClient.stop();
+//
+//				//BDLocation bDLocation=conn.getBindService().mLocationClient.getLastKnownLocation();
+//				//Log.i(TAG, "定位坐标为："+bDLocation.getLongitude()+"----"+bDLocation.getLatitude());
+//				sNode = new BNRoutePlanNode(longitude_start, latitude_start, "开始位置", null, coType);
+//				//sNode = new BNRoutePlanNode(116.30784537597782, 40.057009624099436, "百度大厦", null, coType);
+//				eNode = new BNRoutePlanNode(target_longitude, target_latitude, "目标位置", null, coType);
+//				break;
+//			}
+//			default:
+//				;
+//		}
+		sNode = new BNRoutePlanNode(longitude_start, latitude_start, "开始位置", null, coType);
+		//sNode = new BNRoutePlanNode(116.30784537597782, 40.057009624099436, "百度大厦", null, coType);
+		eNode = new BNRoutePlanNode(target_longitude, target_latitude, "目标位置", null, coType);
 
-				//BDLocation bDLocation=conn.getBindService().mLocationClient.getLastKnownLocation();
-				//Log.i(TAG, "定位坐标为："+bDLocation.getLongitude()+"----"+bDLocation.getLatitude());
-				sNode = new BNRoutePlanNode(longitude_start, latitude_start, "开始位置", null, coType);
-				//sNode = new BNRoutePlanNode(116.30784537597782, 40.057009624099436, "百度大厦", null, coType);
-				eNode = new BNRoutePlanNode(target_longitude, target_latitude, "目标位置", null, coType);
-				break;
-			}
-			default:
-				;
-		}
 		if (sNode != null && eNode != null) {
 			mDb06llBtn.setClickable(false);
 			mDb06llBtn.setText("正在计算路线，请稍候!");

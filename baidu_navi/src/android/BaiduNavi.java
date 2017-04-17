@@ -32,6 +32,7 @@ import static com.baidu.location.LocationClientOption.*;
 public class BaiduNavi extends CordovaPlugin {
     //private static final String NAVI_ACTION = "navi";
     public static final String LOG_TAG = "BaiduNavi";
+    private CoordinateType mCoordinateType = CoordinateType.WGS84;
     @Override
     public boolean execute(String action,final JSONArray args, final CallbackContext callbackContext) throws JSONException {
         if ("navi".equals(action)) {
@@ -65,7 +66,7 @@ public class BaiduNavi extends CordovaPlugin {
                     Intent intent = new Intent().setClass(cordova.getActivity(), BNDemoMainActivity.class);
                     intent.putExtra("longitude", longitude);
                     intent.putExtra("latitude", latitude);
-                    //intent.putExtra("coordinateType", coordinateType);
+                    intent.putExtra("coordinateType", mCoordinateType.toString());
                     cordova.startActivityForResult(cordovaPlugin, intent, 1);
 
                     //下面三句为cordova插件回调页面的逻辑代码
@@ -81,7 +82,7 @@ public class BaiduNavi extends CordovaPlugin {
             Intent intent=new Intent(cordova.getActivity(), LocService.class);
 //            intent.putExtra("uploadUrl", params.getString("uploadUrl"));
 //            intent.putExtra("gps_interval", params.getInt("gps_interval"));
-//            intent.putExtra("params", params.toString());
+              intent.putExtra("coordinateType", mCoordinateType.toString());
 //            //initGPS();
             cordova.getActivity().startService(intent);
             callbackContext.success("success");
