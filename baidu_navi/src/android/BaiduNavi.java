@@ -1,7 +1,13 @@
 package com.mawujun.navi;
 
 
+import android.app.AlertDialog;
+import android.content.ActivityNotFoundException;
+import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
+import android.location.LocationManager;
+import android.provider.Settings;
 import android.util.Log;
 import android.widget.Toast;
 
@@ -72,26 +78,14 @@ public class BaiduNavi extends CordovaPlugin {
             });
             return true;
         } else if("loc".equals(action)){//如果是发送定位数据到后台
-            mLocationClient = new LocationClient(cordova.getActivity().getApplicationContext());
-            //声明LocationClient类
-           // BDLocationListener myListener = new LocLocationListener();
-            mLocationClient.registerLocationListener( new BDLocationListener(){
-                @Override
-                public void onReceiveLocation(BDLocation bdLocation) {
-                    //Log.i("hehr", "onLocationChanged. loc: " + bdLocation);
-                    if (bdLocation != null) {
-                        Log.i("1233", " location is not null" + bdLocation.getLatitude() + " , longtitude: "+bdLocation.getLongitude());
-                    } else {
-                        Toast.makeText( cordova.getActivity().getApplicationContext(), "不能获取当前的位置.", Toast.LENGTH_SHORT).show();
-                    }
-                }
-
-                @Override
-                public void onConnectHotSpotMessage(String s, int i) {
-
-                }
-            } );
-            mLocationClient.start();
+            Intent intent=new Intent(cordova.getActivity(), LocService.class);
+//            intent.putExtra("uploadUrl", params.getString("uploadUrl"));
+//            intent.putExtra("gps_interval", params.getInt("gps_interval"));
+//            intent.putExtra("params", params.toString());
+//            //initGPS();
+            cordova.getActivity().startService(intent);
+            callbackContext.success("success");
+            return true;
         }
         return false;
     }
@@ -107,7 +101,6 @@ public class BaiduNavi extends CordovaPlugin {
         callbackContext.error(json);
     }
 
-    public LocationClient mLocationClient = null;
 
 //    @Override
 //    public void onStart() {
@@ -118,30 +111,62 @@ public class BaiduNavi extends CordovaPlugin {
 //        //注册监听函数
 //        initLocation();
 //    }
-    public void initLocation() {
-        //配置参数是可以每次定位的时候都不同的
-        LocationClientOption option = new LocationClientOption();
-        //高精度定位模式：这种定位模式下，会同时使用网络定位和GPS定位，优先返回最高精度的定位结果；
-        //低功耗定位模式：这种定位模式下，不会使用GPS，只会使用网络定位（Wi-Fi和基站定位）；
-        //仅用设备定位模式：这种定位模式下，不需要连接网络，只使用GPS进行定位，这种模式下不支持室内环境的定位。
-        option.setLocationMode(LocationMode.Hight_Accuracy);////可选，默认高精度，设置定位模式，高精度，低功耗，仅设备
-        option.setScanSpan(1000);//可选，默认0，即仅定位一次，设置发起定位请求的间隔需要大于等于1000ms才是有效的
-        //option.setScanSpan(0);
-        option.setIsNeedAddress(false);//可选，设置是否需要地址信息，默认不需要
-        option.setLocationNotify(false);//可选，默认false，设置是否当gps有效时按照1S1次频率输出GPS结果
-        option.setIsNeedLocationDescribe(false);//可选，默认false，设置是否需要位置语义化结果，可以在BDLocation.getLocationDescribe里得到，结果类似于“在北京天安门附近”
-        option.setIsNeedLocationPoiList(false);//可选，默认false，设置是否需要POI结果，可以在BDLocation.getPoiList里得到
-        option.setIgnoreKillProcess(false);//可选，默认false，定位SDK内部是一个SERVICE，并放到了独立进程，设置是否在stop的时候杀死这个进程，默认杀死
-        option.SetIgnoreCacheException(false);//可选，默认false，设置是否收集CRASH信息，默认收集
-        option.setEnableSimulateGps(false);//可选，默认false，设置是否需要过滤gps仿真结果，默认需要
-        option.setOpenGps(true);//可选，默认false,设置是否使用gps
-        //option.disableCache(true);
 
-        option.setCoorType(CoordinateType.BD09LL.toString());// 返回的定位结果是百度经纬度，默认值gcj02,//wgs84:国际经纬度坐标  "gcj02":国家测绘局标准,"bd09ll":百度经纬度标准,"bd09":百度墨卡托标准
-        option.setProdName("BaiduLoc");
-        mLocationClient.setLocOption(option);
+    public void initGPS(){
+        LocationManager locationManager = (LocationManager)cordova.getActivity().getSystemService(Context.LOCATION_SERVICE);
+        boolean bool= locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
+        if(!bool){
+            new AlertDialog.Builder(cordova.getActivity())
+                    .setTitle("系统提示")
+                    // 设置对话框标
+                    .setMessage("请打开gps！")
+                    // 设置显示的内容
+                    .setPositiveButton("确定",
+                            new DialogInterface.OnClickListener() {// 添加确定按钮
 
-        //MyLog.i(BaiduMapAll.LOG_TAG, this.getGps_interval()+"");
+                                @Override
+                                public void onClick(DialogInterface dialog, int which) {// 确定按钮的响应事件
+
+                                    Intent intent = new Intent();
+                                    intent.setAction(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+                                    intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                    try
+                                    {
+                                        cordova.getActivity().startActivity(intent);
+                                    } catch(ActivityNotFoundException ex)
+                                    {
+                                        // General settings activity
+                                        intent.setAction(Settings.ACTION_SETTINGS);
+                                        try {
+                                            cordova.getActivity().startActivity(intent);
+                                        } catch (Exception e) {
+                                        }
+                                    }
+                                }
+
+                            })
+                    .setNegativeButton("取消",
+                            new DialogInterface.OnClickListener() {// 添加返回按钮
+
+                                @Override
+                                public void onClick(DialogInterface dialog,
+                                                    int which) {// 响应事件
+
+
+                                }
+
+                            }).show();
+
+        }
+
     }
 
+    @Override
+    public void onDestroy() {
+
+        //releaseWakeLock();
+        cordova.getActivity().stopService(new Intent(cordova.getActivity(), LocService.class));
+        //stopPollingService(cordova.getActivity());
+        super.onDestroy();
+    }
 }
