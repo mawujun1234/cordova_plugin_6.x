@@ -13,13 +13,21 @@ import com.baidu.location.BDLocationListener;
 import com.baidu.location.LocationClient;
 import com.baidu.location.LocationClientOption;
 import com.baidu.mapapi.SDKInitializer;
+import com.baidu.mapapi.model.LatLng;
+import com.baidu.mapapi.utils.DistanceUtil;
 import com.baidu.navisdk.adapter.BNRoutePlanNode;
+import com.mawujun.mobile.gps.model.Constants;
+import com.mawujun.mobile.gps.model.GpsMsg;
+import com.mawujun.mobile.gps.model.MsgType;
 
 import org.apache.cordova.LOG;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.Date;
+
 import static com.baidu.location.LocationClient.getBDLocationInCoorType;
+import static com.baidu.location.h.g.aa;
 
 /**
  * 为了能在后台定时的发送gps数据到服务器
@@ -33,6 +41,7 @@ public class LocService extends Service {
     public MyLocationListener mMyLocationListener;
     //播放定位信息
     private Intent intent = new Intent("com.mawujun.navi.RECEIVER");
+    NettyClientBootstrap nettyClientBootstrap=new NettyClientBootstrap();
     /**
      * 实现实时位置回调监听
      */
@@ -47,11 +56,52 @@ public class LocService extends Service {
                 intent.putExtra("latitude", location.getLatitude());
                 sendBroadcast(intent);
 
+                Date loc_time=new Date();
+                Double distance=0.0;
+                Long loc_time_interval=0L;
+                if(LocCurrent.getLongitude()!=null && LocCurrent.getLatitude()!=null){
+                    //上次的经纬度
+                    LatLng pt1 = new LatLng(LocCurrent.getLatitude(), LocCurrent.getLongitude());
+                    //本次经纬度
+                    LatLng pt2 = new LatLng(location.getLatitude(), location.getLongitude());
+                    //计算p1、p2两点之间的直线距离，单位：米
+                    distance= DistanceUtil. getDistance(pt1, pt2);
+
+                    loc_time_interval=loc_time.getTime()-LocCurrent.getLoc_time();
+                }
+
+                LocCurrent.setLongitude( location.getLongitude());
+                LocCurrent.setLatitude(location.getLatitude());
+                LocCurrent.setLoc_time(loc_time.getTime());
+
                 //把gps经纬度转换成百度经纬度，因为web上用到的坐标多是百度坐标
                 BDLocation bad06ll_location=wgs84_gcj02_bad06ll(location.getLongitude(),location.getLatitude());
 
                 //把经纬度数据上传到服务器中去
+                //http://www.cnblogs.com/chaoxiyouda/p/5432216.html
+                GpsMsg gpsMsg=new GpsMsg();
+                gpsMsg.setType(MsgType.GPS);
+                gpsMsg.setUuid(Constants.getUuid());
+                gpsMsg.setSessionId(Constants.getClientId());
+                gpsMsg.setLoginName(Constants.getLoginName());
+                gpsMsg.setUser_id(Constants.getUser_id());
 
+                gpsMsg.setLongitude(bad06ll_location.getLongitude()+"");
+                gpsMsg.setLongitude_orgin( location.getLongitude()+"");
+                gpsMsg.setLatitude(bad06ll_location.getLatitude()+"");
+                gpsMsg.setLatitude_orgin(location.getLatitude()+"");
+
+                gpsMsg.setAltitude((location.getAltitude()==Double.MIN_VALUE?0:location.getAltitude()));
+                gpsMsg.setRadius(location.getRadius());
+                gpsMsg.setDirection(location.getDirection());
+                gpsMsg.setSpeed(location.getSpeed());
+                gpsMsg.setDistance(distance);
+                gpsMsg.setLoc_type(location.getLocType()+"");
+                gpsMsg.setLoc_time(loc_time);
+                gpsMsg.setLoc_time_interval(loc_time_interval);
+                gpsMsg.setGps_interval(Constants.getGps_interval());
+                //aa.setFailInfo("gps数据："+bad06ll_location.getLongitude()+"---"+bad06ll_location.getLatitude());
+                nettyClientBootstrap.push(gpsMsg);
             }
         }
 
@@ -85,7 +135,7 @@ public class LocService extends Service {
         //低功耗定位模式：这种定位模式下，不会使用GPS，只会使用网络定位（Wi-Fi和基站定位）；
         //仅用设备定位模式：这种定位模式下，不需要连接网络，只使用GPS进行定位，这种模式下不支持室内环境的定位。
         option.setLocationMode(LocationClientOption.LocationMode.Hight_Accuracy);////可选，默认高精度，设置定位模式，高精度，低功耗，仅设备
-        option.setScanSpan(2000);//可选，默认0，即仅定位一次，设置发起定位请求的间隔需要大于等于1000ms才是有效的
+        option.setScanSpan(Constants.getGps_interval());//可选，默认0，即仅定位一次，设置发起定位请求的间隔需要大于等于1000ms才是有效的
         //option.setScanSpan(0);
         option.setIsNeedAddress(false);//可选，设置是否需要地址信息，默认不需要
         option.setLocationNotify(false);//可选，默认false，设置是否当gps有效时按照1S1次频率输出GPS结果
@@ -112,8 +162,6 @@ public class LocService extends Service {
         Log.i(BNDemoMainActivity.TAG, "初始化LocationApplication!");
         super.onCreate();
 
-
-
         //onCreate(getBaseContext());
         mLocationClient = new LocationClient(this.getBaseContext());
         mMyLocationListener = new MyLocationListener();
@@ -122,18 +170,26 @@ public class LocService extends Service {
         //不初始化，不能计算距离
         SDKInitializer.initialize(this.getBaseContext().getApplicationContext());
         //handler = new Handler(Looper.getMainLooper());
+
+
     }
     private BNRoutePlanNode.CoordinateType mCoordinateType = null;
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.i(BNDemoMainActivity.TAG, "启动LocationApplication!");
 
-        mCoordinateType= BNRoutePlanNode.CoordinateType.valueOf(intent.getStringExtra("coordinateType"));
-        //Log.w("22222",mCoordinateType.toString());
-        initLocation(mCoordinateType);//BNRoutePlanNode.CoordinateType.WGS84
+        boolean isconnected=nettyClientBootstrap.connected(Constants.getClientId());
+        if(isconnected) {
+            mCoordinateType = BNRoutePlanNode.CoordinateType.valueOf(intent.getStringExtra("coordinateType"));
+            //Log.w("22222",mCoordinateType.toString());
+            initLocation(mCoordinateType);//BNRoutePlanNode.CoordinateType.WGS84
 
-        mLocationClient.start();
-        mLocationClient.requestLocation();
+            mLocationClient.start();
+            mLocationClient.requestLocation();
+        } else {
+            Toast.makeText(this.getBaseContext(), "连接失败，不能连接后台gps服务器!", Toast.LENGTH_SHORT).show();
+        }
+
 
         //toast("开始获取gps信息了", Toast.LENGTH_LONG);
         //LOG.i(BNDemoMainActivity.TAG, "开始获取gps信息了================================================");

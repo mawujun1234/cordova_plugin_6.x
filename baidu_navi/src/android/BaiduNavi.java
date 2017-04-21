@@ -16,6 +16,7 @@ import com.baidu.location.BDLocationListener;
 import com.baidu.location.LocationClient;
 import com.baidu.location.LocationClientOption;
 import com.baidu.navisdk.adapter.BNRoutePlanNode.CoordinateType;
+import com.mawujun.mobile.gps.model.Constants;
 
 import org.apache.cordova.CallbackContext;
 import org.apache.cordova.CordovaPlugin;
@@ -81,8 +82,42 @@ public class BaiduNavi extends CordovaPlugin {
         } else if("loc".equals(action)){//如果是发送定位数据到后台
             Intent intent=new Intent(cordova.getActivity(), LocService.class);
 //            intent.putExtra("uploadUrl", params.getString("uploadUrl"));
-//            intent.putExtra("gps_interval", params.getInt("gps_interval"));
-              intent.putExtra("coordinateType", mCoordinateType.toString());
+            JSONObject params=args.getJSONObject(0);
+            if(params.isNull("session_id")){
+                callbackContext.error("session_id参数不存在");
+                return false;
+            }
+            if(params.isNull("user_id")){
+                callbackContext.error("user_id参数不存在");
+                return false;
+            }
+            if(params.isNull("login_name")){
+                callbackContext.error("login_name参数不存在");
+                return false;
+            }
+            if(params.isNull("uuid")){
+                callbackContext.error("uuid参数不存在");
+                return false;
+            }
+            if(params.isNull("gps_host")){
+                callbackContext.error("sgps_host参数不存在");
+                return false;
+            }
+            if(params.isNull("gps_port")){
+                callbackContext.error("sgps_port参数不存在");
+                return false;
+            }
+
+            Constants.setClientId(params.getString("session_id"));
+            Constants.setUser_id(params.getString("user_id"));
+            Constants.setLoginName(params.getString("login_name"));
+            Constants.setUuid(params.getString("uuid"));
+            Constants.setGps_host(params.getString("gps_host"));
+            Constants.setGps_port(params.getString("gps_port"));
+
+            //intent.putExtra("sessionId",args.getString(0));
+
+            intent.putExtra("coordinateType", mCoordinateType.toString());
 //            //initGPS();
             cordova.getActivity().startService(intent);
             callbackContext.success("success");
